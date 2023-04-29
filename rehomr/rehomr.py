@@ -111,26 +111,24 @@ def verify_email(token):
 
 @bp.route('/login', methods=["GET", "POST"])
 def login():
-
     # Forget any user_id
     session.clear()
 
     if request.method == "POST":
-
         # Ensure username and password were submitted
         username = request.form.get("username")
         password = request.form.get("password")
         if not username or not password:
             error = 'You must provide a username and password'
             return jsonify(error), 400
-
-        # Query database for username
+        # Query database for username, inform user to verify if account inactive
         db = get_db()
         user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         if user['active'] < 1:
             error = 'Check your email inbox for an email from us with a verification link. Verify to log in.'
             flash(error)
             return redirect("/")
+        # Check password and log the user in
         db_password_hash = db.execute("SELECT pw_hash FROM users WHERE username = ?", (username,)).fetchone()
         if user and db_password_hash:
             tmp_var = db_password_hash[0]
@@ -147,7 +145,6 @@ def login():
                 return jsonify(error), 400
         # Redirect user to home page
         return redirect("/")
-
     # User reached route via GET (as by clicking a link or via redirect)
     else:
         return render_template("login.html")
@@ -191,16 +188,16 @@ def password():
     if request.method == "GET":
         return render_template('password.html')
     elif request.method == "POST":
-        value = request.form.get("value")
+        password = request.form.get("value")
         confirmation = request.form.get("confirmation")
-        if not value or not confirmation or value != confirmation:
+        if not password or not confirmation or password != confirmation:
             error = 'Please fill out both fields with matching values'
             return jsonify(error, 403)
         else:
-            new_hash = generate_password_hash(value, method='pbkdf2:sha256', salt_length=8)
+            hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             try:
                 db = get_db()
-                db.execute("UPDATE users SET hash = ? WHERE id = ?", (new_hash, session["user_id"]))
+                db.execute("UPDATE users SET pw_hash = ? WHERE id = ?", (hashed_pw, session["user_id"]))
                 db.commit()
                 db.close()
             except sqlite3.IntegrityError as e:
@@ -237,8 +234,8 @@ def email():
                 if old_email_hash:
                     tmp_old_email = old_email_hash[0]
                     salt = tmp_old_email[:29] # extract the salt from the stored hash
-                    new_email_hash = bcrypt.hashpw(new_email.encode('utf-8'), salt.encode('utf-8')) # hash the new email with the extracted salt
-                    if bcrypt.checkpw(new_email.encode('utf-8'), old_email_hash.encode('utf-8')): # compare the new hash with the stored hash
+                    new_email_hash = bcrypt.hashpw(new_email.encode('utf-8'), salt) # hash the new email with the extracted salt
+                    if bcrypt.checkpw(new_email.encode('utf-8'), tmp_old_email): # compare the new hash with the stored hash
                         error = 'The email address you entered is the same as the one in our database. If the error persists, please contact us.'
                         return jsonify(error, 403)
                     else:
@@ -259,6 +256,7 @@ def email():
 @login_required
 def newstray():
     app = Flask(__name__)
+
     if request.method == "POST":
         # Get information on stray from user
         species = request.form.get("species")
@@ -319,17 +317,16 @@ def newstray():
 
 @bp.route('/strays', methods=["GET"])
 def strays():
-    # Set number of results per page
-    per_page = 10
-
-    # Get current page number from query parameter
-    page = request.args.get('page', 1, type=int)
-
-    # Calculate offset and limit values for pagination
-    offset = (page - 1) * per_page
-    limit = offset + per_page
-
     if request.method == "GET":
+        # Set number of results per page
+        per_page = 10
+
+        # Get current page number from query parameter
+        page = request.args.get('page', 1, type=int)
+
+        # Calculate offset and limit values for pagination
+        offset = (page - 1) * per_page
+        limit = offset + per_page
         db = get_db()
         strays = db.execute("SELECT * FROM strays ORDER BY id LIMIT ? OFFSET ?", (per_page, offset))
         strays_dict = {stray['id']: dict(stray) for stray in strays}
@@ -388,6 +385,9 @@ def survey():
             qr_code_filename = generate_qr_code(file_format)
             if qr_code_filename:
                 return render_template("/download.html", filename=qr_code_filename)
+            else:
+                flash('An error occured in the "generate_qr_code" function')
+                return redirect("/survey")
         else:
             return redirect("/")
 
@@ -479,7 +479,7 @@ def stray(stray_id, methods=["GET"]):
 def get_image(image_id):
     # Retrieve animal information from the database using the id
     db = get_db()
-    cursor = db.execute("SELECT * FROM strays WHERE image_id = ?", (image_id,)).fetchone()
+    cursor = db.execute("SELECT * FROM strays WHERE image_id = ?", (image_id,))
     animal = cursor.fetchone()
     if animal is None:
         error = None
@@ -501,11 +501,6 @@ def get_image(image_id):
 
 @bp.route('/thumbnail/<path:filename>')
 def thumbnail(filename, size=(128, 128)):
-    """
-    Generate a thumbnail of an image with the given filename.
-    The thumbnail will be stored in a subdirectory called "thumbnails"
-    and will have "_thumb" appended to the filename.
-    """
     if not allowed_file(filename):
         raise ValueError(f"File extension not allowed: {filename}")
     

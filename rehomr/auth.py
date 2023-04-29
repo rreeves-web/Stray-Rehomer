@@ -28,63 +28,6 @@ ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif'}
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 
-"""@bp.route('/register', methods=('GET', 'POST'))
-def register():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        db = get_db()
-        error = None
-
-        if not username:
-            error = 'Username is required.'
-        elif not password:
-            error = 'Password is required.'
-
-        if error is None:
-            try:
-                db.execute(
-                    "INSERT INTO user (username, password) VALUES (?, ?)",
-                    (username, generate_password_hash(password)),
-                )
-                db.commit()
-            except db.IntegrityError:
-                error = f"User {username} is already registered."
-            else:
-                return redirect(url_for("auth.login"))
-
-        flash(error)
-
-    return render_template('auth/register.html')"""
-
-
-@bp.route('/login', methods=('GET', 'POST'))
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        db = get_db()
-        error = None
-        user = db.execute(
-            'SELECT * FROM user WHERE username = ?', (username,)
-        ).fetchone()
-
-        if user is None:
-            error = 'Incorrect username.'
-        elif not check_password_hash(user['password'], password):
-            error = 'Incorrect password.'
-        elif user['active'] == 0:
-            error = 'Unverified email address.'
-        if error is None:
-            session.clear()
-            session['user_id'] = user['id']
-            return redirect(url_for('index'))
-
-        flash(error)
-
-    return render_template('login.html')
-
-
 @bp.before_app_request
 def load_logged_in_user():
     user_id = session.get('user_id')
@@ -95,12 +38,6 @@ def load_logged_in_user():
         g.user = get_db().execute(
             'SELECT * FROM users WHERE id = ?', (user_id,)
         ).fetchone()
-
-
-@bp.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('index'))
 
 
 def login_required(view):
@@ -117,6 +54,7 @@ def login_required(view):
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[-1].lower() in ALLOWED_EXTENSIONS
+
 
 def valid_email(address, check_deliverability=False):
     if check_deliverability:
@@ -151,27 +89,6 @@ def valid_email(address, check_deliverability=False):
 def generate_verification_token(length=32):
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for i in range(length))
-
-
-"""@bp.route('/verify/<token>', methods=["GET"])
-def verify_email(token):
-    if method == "GET":
-        try:
-            db = get_db()
-            user = db.execute("SELECT * FROM users WHERE verification_token = ?", (token,)).fetchone()
-            if user:
-                db.execute("UPDATE users SET active = 1 WHERE id = ?", (user['id'],))
-                db.commit()
-                db.close()
-                flash('Your email has been verified!', 'success')
-                return redirect("/login")
-            else:
-                flash('Invalid verification token. Please check your email and try again.', 'error')
-                return redirect("/register")
-        except Exception as e:
-            bp.logger.error(str(e))
-            flash('An error occurred while verifying your email. Please try again later.', 'error')
-            return redirect("/register")"""
 
  
 def send_verification_email(email_address, verification_token):
@@ -218,7 +135,7 @@ def generate_qr_code(user_format):
 
     # Add a brief summary to the image
     d = ImageDraw.Draw(img)
-    d.text((10, 10), "Help re-home stray cats and dogs! Scan this to begin!", fill=(0,))
+    d.text((10, 10), "Help re-home stray cats and dogs! Scan this to add a stray!", fill=(0,))
 
     file_name = 'strays_qr_code.' + user_format
     file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], file_name)
@@ -227,6 +144,11 @@ def generate_qr_code(user_format):
     img.save(file_path, user_format)
 
     # Return only the file name
+    if file_name and file_path:
+        return file_name
+    else:
+        flash('An error occured in the "create_message" function')
+        return None
     return file_name
 
 
@@ -236,13 +158,17 @@ def create_message(sender, to, subject, body):
     message['subject'] = subject
     message['from'] = sender
     encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
-    return {'raw': encoded_message}
+    if encoded_message:
+        return {'raw': encoded_message}
+    else:
+        flash('An error occured in the "create_message" function')
+        return None
 
 
 def send_message(service, user_id, message):
     try:
         message = (service.users().messages().send(userId=user_id, body=message).execute())
     except HttpError as error:
-        print('An error occurred: %s' % error)
+        flash('An error occurred in the "send_message" function: %s' % error)
         message = None
     return message
