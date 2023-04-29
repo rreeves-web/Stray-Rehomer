@@ -1,0 +1,88 @@
+/* Certainly! Here are a few Bootstrap-based HTML solutions that incorporate attractive, mood-lit color schemes:
+
+    Bootswatch: Bootswatch is a collection of free themes for Bootstrap that come in a variety of color schemes, including some with a mood-lit feel similar to Gruvbox. For example, the "Cyborg" theme has a dark gray background with accents in bright blues and purples, while the "Solar" theme has a light cream-colored background with accents in warm oranges and yellows.
+
+    Material Kit: Material Kit is a Bootstrap-based UI kit that incorporates Google's Material Design language. It has a variety of color schemes to choose from, including some with a mood-lit feel. For example, the "Deep Purple" theme has a dark purple background with accents in brighter shades of purple, while the "Orange" theme has a warm orange background with accents in darker shades of orange.
+
+    Paper Kit: Paper Kit is another Bootstrap-based UI kit that has a range of color schemes to choose from. The "Purple" theme has a dark purple background with accents in lighter shades of purple and pink, while the "Yellow" theme has a bright yellow background with accents in darker shades of yellow and green.
+
+    SB Admin 2: SB Admin 2 is a Bootstrap-based admin dashboard template that has a few mood-lit color schemes to choose from. The "Purple" theme has a dark purple background with accents in shades of pink and blue, while the "Teal" theme has a dark teal background with accents in shades of green and blue. */
+
+/* Size for brand */
+
+.form-control{
+    background-color: #5a5a5a; /* set a slightly lighter color for the input fields */
+    border: none; /* remove the border */
+}
+
+.dropdown-menu-custom{
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.form-control-custom{
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.footer-custom{
+    color: rgb(167, 164, 164);
+}
+
+.pagination-custom .page-item.active .page-link{
+    background-color: #313338;
+    color: grey;
+}
+
+.pagination-custom .page-link:focus{
+    outline: none;
+    box-shadow: none;
+    background-color: #313338;
+    color: grey;
+}
+
+.pagination-custom .page-link:hover {
+    background-color: #313338;
+    color: grey;
+}
+
+.pagination-custom .page-link {
+    background-color: transparent;
+    color: grey;
+    border-color: grey;
+}
+
+.pagination-custom .page-item.disabled .page-link {
+    background-color: transparent;
+    color: grey;
+    border-color: grey;
+}
+
+nav .navbar-brand{
+    font-size: xx-large;
+}
+
+/* Colors for brand */
+nav .navbar-brand .grey-1{
+    color: #b2b2b2; /* dulled gray/silver */
+}
+
+nav .navbar-brand .grey-2{
+    color: #8c8c8c; /* dulled gray/silver */
+}
+
+nav .navbar-brand .grey-3{
+    color: #666666; /* dulled gray/silver */
+}
+
+nav .navbar-brand .black{
+    color: #313131; /* dulled gray/silver */
+}
+
+nav .navbar-brand .silver{
+    color: #5a5a5a; /* flashy silver */
+}
+
+nav .navlink .navlink-custom{
+        color: rgb(167, 164, 164);
+}

@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Modify account settings
+{% endblock %}
+{% block main %}
+<!-- Input fields -->
+<div class="container container-fluid">
+    <form action="/email" method="post" id="email-form">
+        <div class="mb-3">
+            <input required read-only autocomplete="off" class="form-control mx-auto w-auto" id="value" name="value" placeholder="New E-mail Address">
+            <br>
+            <input required read-only autocomplete="off" class="form-control mx-auto w-auto" id="confirmation" name="confirmation" placeholder="Confirmation">
+        </div>
+        <button class="btn btn-dark border" type="submit"><a data-bs-toggle="tooltip" data-bs-title="This action is irreversible. Be sure you want to do this.">Submit E-mail Address Change</a></button>
+    </form>
+</div>
+
+<!-- Confirmation modal dialog -->
+<div class="modal fade" id="confirm-modal" tabindex="-1" aria-labelledby="confirm-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirm-modal-label">Confirm E-mail Address Change</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          Are you sure you want to change your e-mail address? A verification e-mail will be sent to your new address.
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-dark-subtle border" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-dark border" id="confirm-button">Confirm</button>
+        </div>
+      </div>
+    </div>
+</div>
+
+<script>
+    // Enable tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+
+    // When the submit button is clicked, prevent the default form submission and show the confirmation modal dialog
+    const form = document.getElementById("email-form");
+    const confirmButton = document.getElementById("confirm-button");
+    form.addEventListener("submit", function(event) {
+        event.preventDefault();
+        const modal = new bootstrap.Modal(document.getElementById("confirm-modal"), {});
+        modal.show();
+    });
+
+    // When the confirm button is clicked, submit the form
+    confirmButton.addEventListener("click", function() {
+        form.submit();
+    });
+</script>
+
+{% endblock %}

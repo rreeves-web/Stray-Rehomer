@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Modify account settings
+{% endblock %}
+{% block main %}
+<div class="container container-fluid">
+    <form action="/username" method="post">
+        <div class="mb-3">
+            <input required autocomplete="off" class="form-control mx-auto w-auto" id="value" name="value" placeholder="New username / password">
+            <br>
+            <input required autocomplete="off" class="form-control mx-auto w-auto" id="confirmation" name="confirmation" placeholder="Confirmation">
+        </div>
+        <button class="btn btn-dark border" type="submit"><a data-bs-toggle="tooltip" data-bs-title="This action is irreversible. Be sure you want to do this.">Submit Username Change</a></button>
+    </form>
+</div>
+<script>
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+</script>
+{% endblock %}

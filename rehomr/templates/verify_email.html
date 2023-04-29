@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% block title %}
+    Verify your email address
+{% endblock %}
+{% block main %}
+    <div class="container my-5 text-light">
+        <h1>Email address verification</h1>
+        <p>A link has been sent to your email address, click it to activate your account.</p>
+    </div>
+{% endblock %}
+{% block scripts %}
+<script>
+// Wait for 5 seconds before redirecting to login page
+setTimeout(function(){
+    window.location.href = "/login";
+}, 5000);
+</script>
+{% endblock %}

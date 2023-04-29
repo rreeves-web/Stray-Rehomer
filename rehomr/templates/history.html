@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    History of Strays Added
+{% endblock %}
+
+{% block main %}
+<h1 class="text-center mb-5">Your Strays</h1>
+    <table class="table table-hover table-dark">
+        <thead>
+            <tr>
+                <th>Species</th>
+                <th>Breed</th>
+                <th>Color</th>
+                <th>City</th>
+                <th>State</th>
+                <th>Stray's Page</th>
+                <th>Time Added</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data goes here-->
+            {% for stray in strays %}
+            <tr>
+                <td>{{ stray.species }}</td>
+                <td>{{ stray.breed }}</td>
+                <td>{{ stray.color }}</td>
+                <td>{{ stray.city }}</td>
+                <td>{{ stray.state }}</td>
+                <td><a href="{{ stray.stray_url }}"><img class="img-fluid img-thumbnail" src="{{ stray.image_url }}"><img></a></td>
+                <td>{{ stray.time }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

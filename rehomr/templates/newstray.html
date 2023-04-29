@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Add new stray(s) to our database
+{% endblock %}
+
+{% block main %}
+<div class="bg-dark">
+    <label for="strays">Add a stray to our database.</label>
+    <form action="/newstray" method="post" enctype="multipart/form-data">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <select class="form-select" name="species" id="species">
+                    <option>Cat</option>
+                    <option>Dog</option>
+                </select>
+            </div>
+        </div>
+        <br>
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <input class="form-control" type="text" placeholder="Breed" id="breed" name="breed"></input>
+            </div>
+        </div>        
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <input class="form-control" type="text" placeholder="Color" id="color" name="color"></input>
+            </div>
+        </div>
+        {% if location %}
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <input required class="form-control" type="text" placeholder="City" id="city" name="city">{{ location.city }}</input>
+            </div>
+        </div>  
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <input required class="form-control" type="text" placeholder="State" id="state" name="state">{{ location.state }}</input>
+            </div>
+        </div>
+        {% else %}
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <input required class="form-control" type="text" placeholder="City" id="city" name="city"></input>
+            </div>
+        </div>  
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <input required class="form-control" type="text" placeholder="State" id="state" name="state"></input>
+            </div>
+        </div>
+        <div class="row">
+            <div class="mb-3">
+                <textarea required class="form-control" type="text" placeholder="Please provide a verbose description of the animal and its surrounding environment." id="description" name="description" rows="3"></textarea>
+            </div>
+        </div>
+        {% endif %}
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <input class="form-control" type="file" id="image" name="image"></input>
+                {% if image_error %}
+                <p style="color:red">{{ image_error }}</p>
+                {% endif %}
+            </div>
+        </div>
+        <button class="btn btn-dark border" type="submit">Add Stray</button>
+    </form>
+</div>
+{% endblock %}

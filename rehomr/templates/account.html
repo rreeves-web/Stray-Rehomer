@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Modify account settings
+{% endblock %}
+{% block main %}
+<div class="container container-fluid">
+    <form action="/account" method="post">
+    <div class="mb-3">
+        <select class="form-select" name="option" id="option">
+            <option id="username" name="username">Username</option>
+            <option id="password" name="password">Password</option>
+        </select>
+    </div>
+        <div class="mb-3">
+            <input required autocomplete="off" class="form-control mx-auto w-auto form-control-custom" id="value" name="value" placeholder="New username / password">
+            <input required autocomplete="off" class="form-control mx-auto w-auto form-control-custom" id="confirmation" name="confirmation" placeholder="Confirmation">
+        </div>
+        <button class="btn btn-primary" type="submit">Input new value</button>
+    </form>
+</div>
+
+<script>
+    const optionSelect = document.getElementById('option');
+    const valueInput = document.getElementById('value');
+    const confirmationInput = document.getElementById('confirmation');
+
+    optionSelect.addEventListener('change', function() {
+        if (optionSelect.value === 'password') {
+            valueInput.type = 'password';
+            confirmationInput.type = 'password';
+        } else {
+            valueInput.type = 'text';
+            confirmationInput.type = 'text';
+        }
+    });
+</script>
+
+{% endblock %}
