@@ -17,4 +17,4 @@ Final Project for CS50: https://www.edx.org/course/introduction-computer-science
 
 ![Registration](./tests/screenshots/registration.png)
 
-![Account Drop-down](./tests/screenshots/account_dropdown.png)
+![Account Drop-down](./tests/screenshots/Account_dropdown.png)
