@@ -7,4 +7,4 @@ Final Project for CS50: https://www.edx.org/course/introduction-computer-science
 
 ![about](./tests/screenshots/about.png)
 
-![strays](./tests/screenshots/View Strays.png)
+![strays]("./tests/screenshots/View Strays.png")
