@@ -108,13 +108,6 @@ def verify_email(token):
             return redirect("/register")
         return render_template("verify_email.html")
 
-
-"""@bp.route('/verify', methods=["GET", "POST"])
-def verify():
-    if request.method == "GET":
-        return render_template("/verify.html")
-    if request.method == "POST":"""
-
         
 @bp.route('/login', methods=["GET", "POST"])
 def login():
@@ -266,7 +259,6 @@ def email():
 
 
 @bp.route('/newstray', methods=["GET", "POST"])
-@login_required
 def newstray():
     app = Flask(__name__)
 
@@ -528,4 +520,3 @@ def thumbnail(filename, size=(128, 128)):
         print(f"Cannot create thumbnail for {filename}")
     
     return thumb_filename
-
