@@ -11,9 +11,9 @@ Final Project for CS50: https://www.edx.org/course/introduction-computer-science
 
 ![Add Strays](./tests/screenshots/Add_Strays.png)
 
-![Survey one](.tests/screenshots/survey1.png)
+![Survey one](./tests/screenshots/survey1.png)
 
-![Survey two](.tests/screenshots/survey2.png)
+![Survey two](./tests/screenshots/survey2.png)
 
 ![Registration](./tests/screenshots/registration.png)
 
