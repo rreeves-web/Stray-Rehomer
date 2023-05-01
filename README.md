@@ -6,4 +6,5 @@ The project utilizes google's Gmail API for sending and receiving emails. If you
 Final Project for CS50: https://www.edx.org/course/introduction-computer-science-harvardx-cs50x
 
 ![about](./tests/screenshots/about.png)
-![view strays]('./tests/screenshots/View Strays.png')
+
+![strays]('./tests/screenshots/View Strays.png')
