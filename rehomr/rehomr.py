@@ -1,4 +1,4 @@
-import os, sqlite3, uuid, math, qrcode, smtplib, bcrypt
+import os, sqlite3, uuid, math, qrcode, bcrypt
 
 from collections import defaultdict
 from flask import Blueprint, Flask, flash, redirect, render_template, request, session, g, url_for, jsonify, send_file, abort, current_app
