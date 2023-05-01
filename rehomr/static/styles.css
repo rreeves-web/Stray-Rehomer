@@ -10,8 +10,21 @@
 
 /* Size for brand */
 
+.card-header{
+    background-color:rgb(133, 102, 56)
+}
+
+.list-group-item{
+    background-color: #878888;
+    border: 0;
+}
+
+.card{
+    background-color: #878888;
+}
+
 .form-control{
-    background-color: #5a5a5a; /* set a slightly lighter color for the input fields */
+    background-color: #c1c3c5; /* set a slightly lighter color for the input fields */
     border: none; /* remove the border */
 }
 

@@ -3,16 +3,22 @@
     Distributable surveys
 {% endblock %}
 {% block main %}
-    <div class="col-md-6 mb-3">
-        <h1>Download QR code embedded survey</h1>
-        <p>Choose a file format:</p>
-        <form method="post" action="/survey">
-            <select class="form-select" name="sel_format" id="sel_format">
-                <option value="pdf">PDF</option>
-                <option value="jpeg">JPEG</option>
-                <option value="png">PNG</option>
-            </select>
-        <button class="btn btn-dark border" type="submit">Get Survey</button>
-        </form>
+    <div class="col-md-6 mb-4">
+        <div class="form-container">
+            <h1>Download QR code embedded survey</h1>
+            <p>Choose a file format:</p>
+            <form method="post" action="/survey">
+                <div class="d-flex justify-content-center align-items-center">
+                    <select class="form-select form-select-lg mb-3" name="sel_format" id="sel_format" style="background-color: #c1c3c5;">
+                        <option value="pdf">PDF</option>
+                        <option value="jpeg">JPEG</option>
+                        <option value="png">PNG</option>
+                    </select>
+                    <div class="col-md-3">
+                        <button class="btn btn-dark border" type="submit">Get Survey</button>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 {% endblock %}

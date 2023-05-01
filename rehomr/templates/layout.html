@@ -16,7 +16,7 @@
         <link href="/static/favicon.ico" rel="icon">
         <link href="/static/styles.css" rel="stylesheet">
 
-        <title>Cat Rehoming Revolutionized{% block title %}{% endblock %}</title>
+        <title>{% block title %}{% endblock %}</title>
 
     </head>
 
@@ -33,6 +33,7 @@
                             <li class="nav-item"><a class="nav-link" href="/strays">View Strays</a></li>
                             <li class="nav-item"><a class="nav-link" href="/newstray">Add Stray(s) to Database</a></li>
                             <li class="nav-item"><a class="nav-link" href="/survey">Get a Distributable Flyer</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/about">About</a></li>
                         </ul>
                         <ul class="navbar-nav ms-auto mt-2">
                             <li class="nav-item dropdown">
@@ -58,16 +59,15 @@
                                     </li>
                                 </ul>
                             </li>
-                            <li class="nav-item"><a class="nav-link" href="/about">About</a></li>
                             <li class="nav-item"><a class="nav-link" href="/logout">Log Out</a></li>
                         </ul>
                     </div>
                     {% else %}
                     <ul class="navbar-nav ms-auto mt-2">
                         <li class="nav-item"><a class="nav-link" href="/strays">View Strays</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/register">Register</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/login">Log In</a></li>
                         <li class="nav-item"><a class="nav-link" href="/about">About</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/login">Log In</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/register">Register</a></li>
                     </ul>
                     {% endif %}
                 </div>

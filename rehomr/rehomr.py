@@ -101,7 +101,7 @@ def verify_email(token):
                 flash("Your email has been verified! You may now log in.")
             else:
                 flash('Invalid verification token. Please check your email and try again.', 'error')
-                return redirect("/register")
+                return redirect("/verify")
         except Exception as e:
             bp.logger.error(str(e))
             flash('An error occurred while verifying your email. Please try again later.', 'error')
@@ -109,6 +109,13 @@ def verify_email(token):
         return render_template("verify_email.html")
 
 
+"""@bp.route('/verify', methods=["GET", "POST"])
+def verify():
+    if request.method == "GET":
+        return render_template("/verify.html")
+    if request.method == "POST":"""
+
+        
 @bp.route('/login', methods=["GET", "POST"])
 def login():
     # Forget any user_id
@@ -192,6 +199,7 @@ def password():
         confirmation = request.form.get("confirmation")
         if not password or not confirmation or password != confirmation:
             error = 'Please fill out both fields with matching values'
+            flash(error)
             return jsonify(error, 403)
         else:
             hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
@@ -204,7 +212,7 @@ def password():
                 flash(e)
                 db.rollback()
                 db.close()
-        return redirect("/")
+        return redirect("/login")
 
 
 @bp.route('/email', methods=["GET", "POST"])
@@ -239,7 +247,12 @@ def email():
                         error = 'The email address you entered is the same as the one in our database. If the error persists, please contact us.'
                         return jsonify(error, 403)
                     else:
-                        db.execute("UPDATE users SET email_hash = ? WHERE id = ?", (new_email_hash, session["user_id"]))
+                        verification_token = generate_verification_token()
+                        verification = send_verification_email(new_email, verification_token)
+                        if not verification:
+                            error = {'error': 'An error occurred while sending a verification email. Ensure you entered your email address correctly and try again.'}
+                            return jsonify(error), 503
+                        db.execute("UPDATE users SET email_hash = ?, verification_token = ?, active = ? WHERE id = ?", (new_email_hash, verification_token, 0, session["user_id"]))
                         db.commit()
                         db.close()
             except sqlite3.IntegrityError as e:
