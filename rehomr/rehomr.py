@@ -79,9 +79,10 @@ def register():
                         db.commit()
                         db.close()
             except sqlite3.IntegrityError as e:
+                db.rollback()
+                db.close()
                 error = {'error': 'An error occured while registering. Please try again.', 'sql_error': str(e)}
                 return jsonify(error), 400
-
         else:
             error = {'error': 'Your request could not be completed. Ensure that you entered a unique username, valid password and matching confirmation.'}
             return jsonify(error), 400
