@@ -19,7 +19,6 @@ from geopy.geocoders import Nominatim
 from rehomr.auth import login_required, allowed_file, valid_email, generate_verification_token, send_verification_email, generate_qr_code
 from rehomr.db import get_db, init_db
 
-# Configure application
 bp = Blueprint('rehomr', __name__, static_url_path='/static/uploads')
 
 
@@ -35,7 +34,6 @@ def register():
     if request.method == "GET":
         return render_template("register.html")
 
-    # Get registration data
     if request.method == "POST":
         username = request.form.get("username")
         if not username:
@@ -46,7 +44,6 @@ def register():
         email_address = request.form.get("email")
         email_confirmation = request.form.get("email-conf")
 
-        # Validate email, normalise and store in database
         # NOTE: Always normalise an email address before checking if an address is in database
         if email_address and email_address == email_confirmation:
             try:
@@ -112,41 +109,34 @@ def verify_email(token):
         
 @bp.route('/login', methods=["GET", "POST"])
 def login():
-    # Forget any user_id
     session.clear()
 
     if request.method == "POST":
-        # Ensure username and password were submitted
         username = request.form.get("username")
         password = request.form.get("password")
         if not username or not password:
             error = 'You must provide a username and password'
             return jsonify(error), 400
-        # Query database for username, inform user to verify if account inactive
         db = get_db()
         user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         if user['active'] < 1:
             error = 'Check your email inbox for an email from us with a verification link. Verify to log in.'
             flash(error)
             return redirect("/")
-        # Check password and log the user in
+
         db_password_hash = db.execute("SELECT pw_hash FROM users WHERE username = ?", (username,)).fetchone()
         if user and db_password_hash:
             tmp_var = db_password_hash[0]
-            salt = tmp_var[:29] # Extract the salt
+            salt = tmp_var[:29]
             new_password_hash = bcrypt.hashpw(password.encode('utf-8'), salt)
             if bcrypt.checkpw(password.encode('utf-8'), db_password_hash[0]):
-                # Remember which user has logged in
                 session["user_id"] = user["id"]
-                # Redirect user to home page
                 db.close()
                 return redirect("/")
             else:
                 error = 'Password is incorrect'
                 return jsonify(error), 400
-        # Redirect user to home page
         return redirect("/")
-    # User reached route via GET (as by clicking a link or via redirect)
     else:
         return render_template("login.html")
 
@@ -154,9 +144,7 @@ def login():
 @bp.route('/logout')
 def logout():
     """Log user out"""
-    # Forget any user_id
     session.clear()
-    # Redirect user to login form
     return redirect("/")
 
 
@@ -212,9 +200,7 @@ def password():
 @bp.route('/email', methods=["GET", "POST"])
 @login_required
 def email():
-    # This function receives user input as a new email address they would like to swap for their old one.
-    # First, we get the user's data from our input form
-    # Validate email, normalise and store in database
+    # This function receives as user input  a new email address they would like to swap for their old one.
     if request.method == "GET":
         return render_template('email.html')
     elif request.method == "POST":
@@ -291,7 +277,6 @@ def newstray():
             else:
                 flash("Invalid file type. Allowed file types are: jpg, jpeg, gif, and png")
                 return redirect('/')
-
         try:
             db = get_db()
             db.execute("INSERT INTO strays (species, breed, color, city, state, description, image_id, time, user_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", (species, breed, color, city, state, desc, imageid, stray_add_time, session["user_id"]))
@@ -307,7 +292,6 @@ def newstray():
         # Check if user is using mobile, get geo-location to pre-populate city/state fields
         user_agent = UserAgent(request.headers.get('User-Agent'))
         is_mobile = user_agent.platform in ('android', 'iphone')
-
         if is_mobile:
             geolocator = Nominatim(user_agent='rehomr')
             user_ip = request.remote_addr
@@ -316,7 +300,6 @@ def newstray():
             state = location.raw.get('address', {}).get('state', '')
             location = jsonify({'city': city, 'state': state})
             return render_template('newstray.html', location=location)
-        
         else:
             return render_template('newstray.html')
     
@@ -324,17 +307,14 @@ def newstray():
 @bp.route('/strays', methods=["GET"])
 def strays():
     if request.method == "GET":
-        # Set number of results per page
-        per_page = 10
-
+        results_per_page = 10
         # Get current page number from query parameter
         page = request.args.get('page', 1, type=int)
-
         # Calculate offset and limit values for pagination
-        offset = (page - 1) * per_page
-        limit = offset + per_page
+        offset = (page - 1) * results_per_page
+        limit = offset + results_per_page
         db = get_db()
-        strays = db.execute("SELECT * FROM strays ORDER BY id LIMIT ? OFFSET ?", (per_page, offset))
+        strays = db.execute("SELECT * FROM strays ORDER BY id LIMIT ? OFFSET ?", (results_per_page, offset))
         strays_dict = {stray['id']: dict(stray) for stray in strays}
         strays_list = [dict(strays_dict[key], id=key) for key in strays_dict]
         new_strays_list = []
@@ -359,9 +339,8 @@ def strays():
                 'stray_url': stray_url
             })
         
-        # Calculate total number of pages for pagination
         total_pages = math.ceil(db.execute("SELECT COUNT(*) FROM strays").fetchone()[0])
-        num_pages = math.ceil(total_pages / per_page)
+        num_pages = math.ceil(total_pages / results_per_page)
         strays.close()
         if page < 1 or page > num_pages:
             abort(404)
@@ -378,15 +357,13 @@ def about():
 
 
 @bp.route("/survey", methods=["GET", "POST"])
+@login_required
 def survey():
     if request.method == "GET":
         return render_template("/survey.html")
-
     if request.method == "POST":
-        # Get the chosen file format
         with request:
             file_format = request.form.get("sel_format")
-        # Serve to user
         if file_format:
             qr_code_filename = generate_qr_code(file_format)
             if qr_code_filename:
@@ -417,7 +394,6 @@ def history():
         strays_list = [dict(strays_dict[key], id=key) for key in strays_dict]
         strays.close()
         new_strays_list = []
-
         for stray in strays_list:
             date = datetime.fromtimestamp(stray['time'])
             date = date.strftime('%Y-%m-%d %H:%M:%S')
@@ -441,7 +417,6 @@ def history():
                 'stray_url': stray_url,
                 'time': date
             })
-
         return render_template("history.html", strays=new_strays_list)
 
 
@@ -458,7 +433,6 @@ def stray(stray_id, methods=["GET"]):
             conn.close()
             return error
         else:
-            # Generate the image URL using the image_id
             path = get_image(stray['image_id'])
             if path is None:
                 image_url = url_for('static', filename='uploads/' + 'placeholder.jpg')
@@ -483,7 +457,6 @@ def stray(stray_id, methods=["GET"]):
 
 @bp.route('/animal/<image_id>', methods=["GET"])
 def get_image(image_id):
-    # Retrieve animal information from the database using the id
     db = get_db()
     cursor = db.execute("SELECT * FROM strays WHERE image_id = ?", (image_id,))
     animal = cursor.fetchone()
@@ -509,15 +482,12 @@ def get_image(image_id):
 def thumbnail(filename, size=(128, 128)):
     if not allowed_file(filename):
         raise ValueError(f"File extension not allowed: {filename}")
-    
     base, ext = os.path.splitext(filename)
     thumb_filename = f"{base}_thumb{ext}"
-    
     try:
         with Image.open(os.path.join(current_app.config['UPLOAD_FOLDER'], filename)) as im:
             im.thumbnail(size)
             im.save(os.path.join(current_app.config['UPLOAD_FOLDER'], 'thumbnails', thumb_filename))
     except OSError:
         print(f"Cannot create thumbnail for {filename}")
-    
     return thumb_filename
