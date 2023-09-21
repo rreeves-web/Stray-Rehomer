@@ -64,25 +64,21 @@ def valid_email(address, check_deliverability=False):
             # login pages).
             emailinfo = validate_email(address, check_deliverability=True)
 
-            # After this point, use only the normalized form of the email address,
-            # especially before going to a database query.
+            # Use only the normalized form of the email address, especially before going to a database query.
             email = emailinfo.normalized
             return email
 
         except EmailNotValidError as e:
-
-            # The exception message is human-readable explanation of why it's
-            # not a valid (or deliverable) email address.
-            print(str(e))
-            return e
+            error = {'error': str(e)}
+            return jsonify(error, status=400)
     else:
         try:
             emailinfo = validate_email(address, check_deliverability=False)
             email = emailinfo.normalized
             return email
         except EmailNotValidError as e:
-            print(str(e))
-            return e
+            error = {'error': str(e)}
+            return jsonify(error, status=400)
 
 
 # Generate a random string for email verification token

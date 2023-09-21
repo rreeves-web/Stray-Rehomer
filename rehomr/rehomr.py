@@ -38,7 +38,7 @@ def register():
         username = request.form.get("username")
         if not username:
             error = {'error': 'User not found'}
-            return jsonify(error), 400
+            return jsonify(error, status=401)
         password = request.form.get("password")
         pw_confirmation = request.form.get("confirmation")
         email_address = request.form.get("email")
@@ -51,9 +51,8 @@ def register():
                 email_address = tmp_email
                 email_validity = True
             except EmailNotValidError as e:
-                error = (str(e))
-                error = {'Error': error}
-                return jsonify(error, 503)
+                error = {'error': str(e)}
+                return jsonify(error, status=400)
         email_validity = True
         if password and password == pw_confirmation and email_validity:
             hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
@@ -63,13 +62,13 @@ def register():
                 user_exists = db.execute("SELECT * FROM users WHERE username = ? OR email_hash = ?", (username, hashed_email,)).fetchone()
                 if user_exists:
                     error = {'error': 'Username is already taken. Please choose another.'}
-                    return jsonify(error), 400
+                    return jsonify(error, status=401)
                 else:
                     verification_token = generate_verification_token()
                     verification = send_verification_email(email_address, verification_token)
                     if not verification:
                         error = {'error': 'An error occurred while sending a verification email. Ensure you entered your email address correctly and try again.'}
-                        return jsonify(error), 503
+                        return jsonify(error, status=503)
                     else:
                         db = get_db()
                         db.execute("INSERT INTO users (username, pw_hash, email_hash, verification_token, active) VALUES(?, ?, ?, ?, ?)", (username, hashed_pw, hashed_email, verification_token, 0))
@@ -79,10 +78,10 @@ def register():
                 db.rollback()
                 db.close()
                 error = {'error': 'An error occured while registering. Please try again.', 'sql_error': str(e)}
-                return jsonify(error), 400
+                return jsonify(error, status=400)
         else:
             error = {'error': 'Your request could not be completed. Ensure that you entered a unique username, valid password and matching confirmation.'}
-            return jsonify(error), 400
+            return jsonify(error, status=401)
     return redirect("/login")
 
 
@@ -116,11 +115,11 @@ def login():
         password = request.form.get("password")
         if not username or not password:
             error = 'You must provide a username and password'
-            return jsonify(error), 400
+            return jsonify(error, status=401)
         db = get_db()
         user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         if user['active'] < 1:
-            error = 'Check your email inbox for an email from us with a verification link. Verify to log in.'
+            error = 'Check your email inbox for a message from us with a verification link. Verify to log in.'
             flash(error)
             return redirect("/")
 
@@ -135,7 +134,7 @@ def login():
                 return redirect("/")
             else:
                 error = 'Password is incorrect'
-                return jsonify(error), 400
+                return jsonify(error, status=400)
         return redirect("/")
     else:
         return render_template("login.html")
@@ -158,7 +157,7 @@ def username():
         confirmation = request.form.get("confirmation")
         if not value or not confirmation or value != confirmation:
             error = 'Please fill out both fields with matching values'
-            return jsonify(error, 403)
+            return jsonify(error, status=403)
         else:
             try:
                 db = get_db()
@@ -182,7 +181,7 @@ def password():
         if not password or not confirmation or password != confirmation:
             error = 'Please fill out both fields with matching values'
             flash(error)
-            return jsonify(error, 403)
+            return jsonify(error, status=403)
         else:
             hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             try:
@@ -215,7 +214,7 @@ def email():
             except EmailNotValidError as e:
                 error = (str(e))
                 error = {'Error': error}
-                return jsonify(error, 503)
+                return jsonify(error, status=503)
             try:
                 db = get_db()
                 old_email_hash = db.execute("SELECT email_hash FROM users WHERE id = ?", (session["user_id"],)).fetchone()
@@ -225,13 +224,13 @@ def email():
                     new_email_hash = bcrypt.hashpw(new_email.encode('utf-8'), salt) # hash the new email with the extracted salt
                     if bcrypt.checkpw(new_email.encode('utf-8'), tmp_old_email): # compare the new hash with the stored hash
                         error = 'The email address you entered is the same as the one in our database. If the error persists, please contact us.'
-                        return jsonify(error, 403)
+                        return jsonify(error, status=403)
                     else:
                         verification_token = generate_verification_token()
                         verification = send_verification_email(new_email, verification_token)
                         if not verification:
                             error = {'error': 'An error occurred while sending a verification email. Ensure you entered your email address correctly and try again.'}
-                            return jsonify(error), 503
+                            return jsonify(error, status=503)
                         db.execute("UPDATE users SET email_hash = ?, verification_token = ?, active = ? WHERE id = ?", (new_email_hash, verification_token, 0, session["user_id"]))
                         db.commit()
                         db.close()
@@ -242,7 +241,7 @@ def email():
             return redirect("/")
         else:
             error = 'Please fill out both fields with matching values'
-            return jsonify(error, 403)
+            return jsonify(error, status=403)
 
 
 @bp.route('/newstray', methods=["GET", "POST"])
