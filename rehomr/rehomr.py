@@ -369,27 +369,26 @@ def stray(stray_id, methods=["GET"]):
             cursor.close()
             conn.close()
             return error
+        path = get_image(stray['image_id'])
+        if path is None:
+            image_url = url_for('static', filename='uploads/' + 'placeholder.jpg')
         else:
-            path = get_image(stray['image_id'])
-            if path is None:
-                image_url = url_for('static', filename='uploads/' + 'placeholder.jpg')
-            else:
-                image_extension = path.rsplit('.', 1)[1].lower()
-                if image_extension in current_app.config['ALLOWED_EXTENSIONS']:
-                    image_url = url_for('static', filename='uploads/' + path)
-            stray_url = url_for('rehomr.strays', stray_id=stray['id'])
-            new_info_dict = {
-                'id': stray['id'],
-                'species': stray['species'],
-                'breed': stray['breed'],
-                'color': stray['color'],
-                'city': stray['city'],
-                'state': stray['state'],
-                'description': stray['description'],
-                'image_url': image_url,
-                'stray_url': stray_url
-            }
-            return render_template('stray.html', stray=new_info_dict)
+            image_extension = path.rsplit('.', 1)[1].lower()
+            if image_extension in current_app.config['ALLOWED_EXTENSIONS']:
+                image_url = url_for('static', filename='uploads/' + path)
+        stray_url = url_for('rehomr.strays', stray_id=stray['id'])
+        new_info_dict = {
+            'id': stray['id'],
+            'species': stray['species'],
+            'breed': stray['breed'],
+            'color': stray['color'],
+            'city': stray['city'],
+            'state': stray['state'],
+            'description': stray['description'],
+            'image_url': image_url,
+            'stray_url': stray_url
+        }
+        return render_template('stray.html', stray=new_info_dict)
 
 
 @bp.route('/animal/<image_id>', methods=["GET"])
