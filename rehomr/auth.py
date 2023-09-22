@@ -1,5 +1,5 @@
 from __future__ import print_function
-import functools, secrets, string, smtplib, base64, os, qrcode, io, slimta
+import functools, secrets, string, smtplib, base64, os, qrcode, io, slimta, bcrypt
 
 
 from flask import (
@@ -54,6 +54,54 @@ def login_required(view):
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[-1].lower() in ALLOWED_EXTENSIONS
+           
+
+def validate_registration(username, password, password_confirmation, email, email_confirmation):
+    # NOTE: Always normalise an email address before checking if an address is in database
+    if email and email == email_confirmation:
+        try:
+            tmp_email = valid_email(email, check_deliverability=True)
+            email = tmp_email
+            email_validity = True
+        except EmailNotValidError as e:
+            error = {'error': str(e)}
+            return jsonify(error, status=400)
+
+    if password and password == password_confirmation and email_validity:
+        hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        hashed_email = bcrypt.hashpw(email.encode('utf-8'), bcrypt.gensalt())
+        try:
+            db = get_db()
+            user_exists = db.execute("SELECT * FROM users WHERE username = ? OR email_hash = ?", (username, hashed_email,)).fetchone()
+            if user_exists:
+                error = {'error': 'Username is already taken. Please choose another.'}
+                return jsonify(error, status=401)
+            else:
+                db = get_db()
+                db.execute("INSERT INTO users (username, pw_hash, email_hash, active) VALUES(?, ?, ?, ?)", (username, hashed_pw, hashed_email, 0))
+                db.commit()
+                db.close()
+                # This code implements verification tokens sent by email, but my google admin
+                # trial expired, so I've removed this functionality for now. If I implement
+                # my own email server then I'll re-implement this.
+                """verification_token = generate_verification_token()
+                verification = send_verification_email(email, verification_token)
+                if not verification:
+                    error = {'error': 'An error occurred while sending a verification email. Ensure you entered your email address correctly and try again.'}
+                    return jsonify(error, status=503)
+                else:
+                    db = get_db()
+                    db.execute("INSERT INTO users (username, pw_hash, email_hash, verification_token, active) VALUES(?, ?, ?, ?, ?)", (username, hashed_pw, hashed_email, verification_token, 0))
+                    db.commit()
+                    db.close()"""
+        except sqlite3.IntegrityError as e:
+            db.rollback()
+            db.close()
+            error = {'error': 'An error occured while registering. Please try again.', 'sql_error': str(e)}
+            return jsonify(error, status=400)
+    else:
+        error = {'error': 'Your request could not be completed. Ensure that you entered a unique username, valid password and matching confirmation.'}
+        return jsonify(error, status=401)
 
 
 def valid_email(address, check_deliverability=False):
@@ -80,6 +128,46 @@ def valid_email(address, check_deliverability=False):
             error = {'error': str(e)}
             return jsonify(error, status=400)
 
+def validate_login(username, password):
+    if not username or not password:
+        error = 'You must provide a username and password'
+        return jsonify(error, status=401)
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+    if user['active'] < 1:
+        error = 'Check your email inbox for a message from us with a verification link. Verify to log in.'
+        flash(error)
+        return redirect("/")
+
+    db_password_hash = db.execute("SELECT pw_hash FROM users WHERE username = ?", (username,)).fetchone()
+    if user and db_password_hash:
+        tmp_var = db_password_hash[0]
+        salt = tmp_var[:29]
+        new_password_hash = bcrypt.hashpw(password.encode('utf-8'), salt)
+        if bcrypt.checkpw(password.encode('utf-8'), db_password_hash[0]):
+            session["user_id"] = user["id"]
+            db.close()
+            return redirect("/")
+        else:
+            error = 'Password is incorrect'
+            return jsonify(error, status=400)
+    return redirect("/")
+
+def validate_username_change(username, confirmation):
+
+    if not username or not confirmation or username != confirmation:
+        error = 'Please fill out both fields with matching values'
+        raise ValueError(error)
+    try:
+        db = get_db()
+        db.execute("UPDATE users SET username = ? WHERE id = ?", (username, session["user_id"]))
+        db.commit()
+        db.close()
+    except sqlite3.IntegrityError as e:
+        flash(e)
+        db.rollback()
+        db.close()
+    return redirect("/")
 
 # Generate a random string for email verification token
 def generate_verification_token(length=32):
@@ -87,7 +175,8 @@ def generate_verification_token(length=32):
     return ''.join(secrets.choice(alphabet) for i in range(length))
 
  
-def send_verification_email(email_address, verification_token):
+def send_verification_email(email, verification_token):
+
     creds = None
     if os.path.exists('token.json'):
         creds = Credentials.from_authorized_user_file('token.json', SCOPES)
@@ -110,7 +199,7 @@ def send_verification_email(email_address, verification_token):
         body = f'Thank you for registering with Strays. Please click the following link to verify your email address: {verification_url}'
         # Call the Gmail API
         service = build('gmail', 'v1', credentials=creds)
-        message = create_message(os.environ.get('EMAIL_ADDRESS'), email_address, subject, body)
+        message = create_message(os.environ.get('EMAIL'), email, subject, body)
         send_message(service, 'strayanimalsfindhomes@gmail.com', message)
         if message:
             return True

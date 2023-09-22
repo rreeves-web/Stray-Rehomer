@@ -1,4 +1,4 @@
-import os, sqlite3, uuid, math, qrcode, bcrypt
+import os, sqlite3, uuid, math, qrcode, bcrypt, logging
 
 from collections import defaultdict
 from flask import Blueprint, Flask, flash, redirect, render_template, request, session, g, url_for, jsonify, send_file, abort, current_app
@@ -16,7 +16,7 @@ from PIL import Image
 from io import BytesIO
 from geopy.geocoders import Nominatim
 
-from rehomr.auth import login_required, allowed_file, valid_email, generate_verification_token, send_verification_email, generate_qr_code
+from rehomr.auth import login_required, allowed_file, validate_login, validate_registration, validate_username_change, valid_email, generate_verification_token, send_verification_email, generate_qr_code
 from rehomr.db import get_db, init_db
 
 bp = Blueprint('rehomr', __name__, static_url_path='/static/uploads')
@@ -24,6 +24,7 @@ bp = Blueprint('rehomr', __name__, static_url_path='/static/uploads')
 
 @bp.route('/', methods=["GET"])
 def index():
+
     db = get_db()
     if request.method == "GET":
         return render_template('index.html')
@@ -31,57 +32,22 @@ def index():
 
 @bp.route('/register', methods=["GET", "POST"])
 def register():
+
     if request.method == "GET":
         return render_template("register.html")
 
     if request.method == "POST":
         username = request.form.get("username")
-        if not username:
-            error = {'error': 'User not found'}
-            return jsonify(error, status=401)
-        password = request.form.get("password")
-        pw_confirmation = request.form.get("confirmation")
-        email_address = request.form.get("email")
-        email_confirmation = request.form.get("email-conf")
 
-        # NOTE: Always normalise an email address before checking if an address is in database
-        if email_address and email_address == email_confirmation:
-            try:
-                tmp_email = valid_email(email_address, check_deliverability=True)
-                email_address = tmp_email
-                email_validity = True
-            except EmailNotValidError as e:
-                error = {'error': str(e)}
-                return jsonify(error, status=400)
-        email_validity = True
-        if password and password == pw_confirmation and email_validity:
-            hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-            hashed_email = bcrypt.hashpw(email_address.encode('utf-8'), bcrypt.gensalt())
-            try:
-                db = get_db()
-                user_exists = db.execute("SELECT * FROM users WHERE username = ? OR email_hash = ?", (username, hashed_email,)).fetchone()
-                if user_exists:
-                    error = {'error': 'Username is already taken. Please choose another.'}
-                    return jsonify(error, status=401)
-                else:
-                    verification_token = generate_verification_token()
-                    verification = send_verification_email(email_address, verification_token)
-                    if not verification:
-                        error = {'error': 'An error occurred while sending a verification email. Ensure you entered your email address correctly and try again.'}
-                        return jsonify(error, status=503)
-                    else:
-                        db = get_db()
-                        db.execute("INSERT INTO users (username, pw_hash, email_hash, verification_token, active) VALUES(?, ?, ?, ?, ?)", (username, hashed_pw, hashed_email, verification_token, 0))
-                        db.commit()
-                        db.close()
-            except sqlite3.IntegrityError as e:
-                db.rollback()
-                db.close()
-                error = {'error': 'An error occured while registering. Please try again.', 'sql_error': str(e)}
-                return jsonify(error, status=400)
-        else:
-            error = {'error': 'Your request could not be completed. Ensure that you entered a unique username, valid password and matching confirmation.'}
+        if not username:
+            error = {'error': 'Login failed, incorrect information.'}
             return jsonify(error, status=401)
+
+        password = request.form.get("password")
+        password_confirmation = request.form.get("confirmation")
+        email = request.form.get("email")
+        email_confirmation = request.form.get("email-conf")
+        validate_registration(username, password, password_confirmation, email, email_confirmation)
     return redirect("/login")
 
 
@@ -108,41 +74,20 @@ def verify_email(token):
         
 @bp.route('/login', methods=["GET", "POST"])
 def login():
-    session.clear()
 
+    session.clear()
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
-        if not username or not password:
-            error = 'You must provide a username and password'
-            return jsonify(error, status=401)
-        db = get_db()
-        user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
-        if user['active'] < 1:
-            error = 'Check your email inbox for a message from us with a verification link. Verify to log in.'
-            flash(error)
-            return redirect("/")
-
-        db_password_hash = db.execute("SELECT pw_hash FROM users WHERE username = ?", (username,)).fetchone()
-        if user and db_password_hash:
-            tmp_var = db_password_hash[0]
-            salt = tmp_var[:29]
-            new_password_hash = bcrypt.hashpw(password.encode('utf-8'), salt)
-            if bcrypt.checkpw(password.encode('utf-8'), db_password_hash[0]):
-                session["user_id"] = user["id"]
-                db.close()
-                return redirect("/")
-            else:
-                error = 'Password is incorrect'
-                return jsonify(error, status=400)
+        validate_login(username, password)
         return redirect("/")
-    else:
-        return render_template("login.html")
+
+    return render_template("login.html")
 
 
 @bp.route('/logout')
 def logout():
-    """Log user out"""
+
     session.clear()
     return redirect("/")
 
@@ -150,24 +95,21 @@ def logout():
 @bp.route('/username', methods=["GET", "POST"])
 @login_required
 def username():
+    logger = logging.getLogger(__name__)
+
     if request.method == "GET":
         return render_template('username.html')
-    elif request.method == "POST":
-        value = request.form.get("value")
-        confirmation = request.form.get("confirmation")
-        if not value or not confirmation or value != confirmation:
-            error = 'Please fill out both fields with matching values'
-            return jsonify(error, status=403)
-        else:
-            try:
-                db = get_db()
-                db.execute("UPDATE users SET username = ? WHERE id = ?", (value, session["user_id"]))
-                db.commit()
-                db.close()
-            except sqlite3.IntegrityError as e:
-                flash(e)
-                db.rollback()
-            return redirect("/")
+
+    username = request.form.get("value")
+    username_confirmation = request.form.get("confirmation")
+    try:
+        validate_username_change(username, username_confirmation)
+        return redirect("/")
+    except ValueError as e:
+        logger.error(e)
+        raise
+        #return jsonify(str(e))
+    return redirect("/")
 
 
 @bp.route('/password', methods=["GET", "POST"])
