@@ -20,7 +20,7 @@ from rehomr.auth import login_required, allowed_file, validate_login, validate_r
 from rehomr.db import get_db, init_db
 
 bp = Blueprint('rehomr', __name__, static_url_path='/static/uploads')
-
+logger = logging.getLogger(__name__)
 
 @bp.route('/', methods=["GET"])
 def index():
@@ -38,11 +38,6 @@ def register():
 
     if request.method == "POST":
         username = request.form.get("username")
-
-        if not username:
-            error = {'error': 'Login failed, incorrect information.'}
-            return jsonify(error, status=401)
-
         password = request.form.get("password")
         password_confirmation = request.form.get("confirmation")
         email = request.form.get("email")
@@ -95,7 +90,7 @@ def logout():
 @bp.route('/username', methods=["GET", "POST"])
 @login_required
 def username():
-    logger = logging.getLogger(__name__)
+    
 
     if request.method == "GET":
         return render_template('username.html')
@@ -121,9 +116,9 @@ def password():
         password = request.form.get("value")
         confirmation = request.form.get("confirmation")
         if not password or not confirmation or password != confirmation:
-            error = 'Please fill out both fields with matching values'
-            flash(error)
-            return jsonify(error, status=403)
+            error = {'error': 'Please fill out both fields with matching values',
+            'status': '403'}
+            return jsonify(error)
         else:
             hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             try:
@@ -154,9 +149,8 @@ def email():
                 new_email = valid_email(tmp_email, check_deliverability=True)
                 email_validity = True
             except EmailNotValidError as e:
-                error = (str(e))
-                error = {'Error': error}
-                return jsonify(error, status=503)
+                logger.error(e)
+                raise
             try:
                 db = get_db()
                 old_email_hash = db.execute("SELECT email_hash FROM users WHERE id = ?", (session["user_id"],)).fetchone()
@@ -165,14 +159,16 @@ def email():
                     salt = tmp_old_email[:29] # extract the salt from the stored hash
                     new_email_hash = bcrypt.hashpw(new_email.encode('utf-8'), salt) # hash the new email with the extracted salt
                     if bcrypt.checkpw(new_email.encode('utf-8'), tmp_old_email): # compare the new hash with the stored hash
-                        error = 'The email address you entered is the same as the one in our database. If the error persists, please contact us.'
-                        return jsonify(error, status=403)
+                        error = {'error': 'The email address you entered is the same as the one in our database. If the error persists, please contact us.',
+                        'status': '403'}
+                        return jsonify(error)
                     else:
                         verification_token = generate_verification_token()
                         verification = send_verification_email(new_email, verification_token)
                         if not verification:
-                            error = {'error': 'An error occurred while sending a verification email. Ensure you entered your email address correctly and try again.'}
-                            return jsonify(error, status=503)
+                            error = {'error': 'An error occurred while sending a verification email. Ensure you entered your email address correctly and try again.',
+                            'status': '503'}
+                            return jsonify(error)
                         db.execute("UPDATE users SET email_hash = ?, verification_token = ?, active = ? WHERE id = ?", (new_email_hash, verification_token, 0, session["user_id"]))
                         db.commit()
                         db.close()
@@ -182,8 +178,9 @@ def email():
                 db.close()
             return redirect("/")
         else:
-            error = 'Please fill out both fields with matching values'
-            return jsonify(error, status=403)
+            error = {'error': 'Please fill out both fields with matching values',
+            'status': '403'}
+            return jsonify(error)
 
 
 @bp.route('/newstray', methods=["GET", "POST"])
@@ -241,8 +238,7 @@ def newstray():
             state = location.raw.get('address', {}).get('state', '')
             location = jsonify({'city': city, 'state': state})
             return render_template('newstray.html', location=location)
-        else:
-            return render_template('newstray.html')
+        return render_template('newstray.html')
     
 
 @bp.route('/strays', methods=["GET"])

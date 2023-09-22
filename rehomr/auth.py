@@ -1,5 +1,5 @@
 from __future__ import print_function
-import functools, secrets, string, smtplib, base64, os, qrcode, io, slimta, bcrypt
+import functools, secrets, string, smtplib, base64, os, qrcode, io, slimta, bcrypt, logging
 
 
 from flask import (
@@ -21,7 +21,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-
+logger = logging.getLogger(__name__)
 
 bp = Blueprint('auth', __name__, url_prefix='/auth', static_url_path='/static')
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif'}
@@ -64,8 +64,8 @@ def validate_registration(username, password, password_confirmation, email, emai
             email = tmp_email
             email_validity = True
         except EmailNotValidError as e:
-            error = {'error': str(e)}
-            return jsonify(error, status=400)
+            logger.error(e)
+            raise
 
     if password and password == password_confirmation and email_validity:
         hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
@@ -74,8 +74,9 @@ def validate_registration(username, password, password_confirmation, email, emai
             db = get_db()
             user_exists = db.execute("SELECT * FROM users WHERE username = ? OR email_hash = ?", (username, hashed_email,)).fetchone()
             if user_exists:
-                error = {'error': 'Username is already taken. Please choose another.'}
-                return jsonify(error, status=401)
+                error = {'error': 'Username is already taken. Please choose another.',
+                'status': '401'}
+                return jsonify(error)
             else:
                 db = get_db()
                 db.execute("INSERT INTO users (username, pw_hash, email_hash, active) VALUES(?, ?, ?, ?)", (username, hashed_pw, hashed_email, 0))
@@ -98,10 +99,12 @@ def validate_registration(username, password, password_confirmation, email, emai
             db.rollback()
             db.close()
             error = {'error': 'An error occured while registering. Please try again.', 'sql_error': str(e)}
-            return jsonify(error, status=400)
+            logger.error(error)
+            raise
     else:
-        error = {'error': 'Your request could not be completed. Ensure that you entered a unique username, valid password and matching confirmation.'}
-        return jsonify(error, status=401)
+        error = {'error': 'Your request could not be completed. Ensure that you entered a unique username, valid password and matching confirmation.',
+        'status': '401'}
+        return jsonify(error)
 
 
 def valid_email(address, check_deliverability=False):
@@ -117,21 +120,22 @@ def valid_email(address, check_deliverability=False):
             return email
 
         except EmailNotValidError as e:
-            error = {'error': str(e)}
-            return jsonify(error, status=400)
+            logger.error(e)
+            raise
     else:
         try:
             emailinfo = validate_email(address, check_deliverability=False)
             email = emailinfo.normalized
             return email
         except EmailNotValidError as e:
-            error = {'error': str(e)}
-            return jsonify(error, status=400)
+            logger.error(e)
+            raise
 
 def validate_login(username, password):
     if not username or not password:
-        error = 'You must provide a username and password'
-        return jsonify(error, status=401)
+        error = {'error': 'You must provide a username and password',
+        'status': '401'}
+        return jsonify(error)
     db = get_db()
     user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
     if user['active'] < 1:
@@ -149,8 +153,9 @@ def validate_login(username, password):
             db.close()
             return redirect("/")
         else:
-            error = 'Password is incorrect'
-            return jsonify(error, status=400)
+            error = {'error': 'Password is incorrect',
+            'status': '400'}
+            return jsonify(error)
     return redirect("/")
 
 def validate_username_change(username, confirmation):
@@ -164,9 +169,10 @@ def validate_username_change(username, confirmation):
         db.commit()
         db.close()
     except sqlite3.IntegrityError as e:
-        flash(e)
         db.rollback()
         db.close()
+        logger.error(e)
+        raise
     return redirect("/")
 
 # Generate a random string for email verification token
@@ -236,9 +242,8 @@ def generate_qr_code(user_format):
     # Return only the file name
     if file_name and file_path:
         return file_name
-    else:
-        flash('An error occured in the "create_message" function')
-        return None
+    flash('An error occured in the "create_message" function')
+    return None
 
 
 def create_message(sender, to, subject, body):
@@ -249,15 +254,14 @@ def create_message(sender, to, subject, body):
     encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
     if encoded_message:
         return {'raw': encoded_message}
-    else:
-        flash('An error occured in the "create_message" function')
-        return None
+    flash('An error occured in the "create_message" function')
+    return None
 
 
 def send_message(service, user_id, message):
     try:
         message = (service.users().messages().send(userId=user_id, body=message).execute())
     except HttpError as error:
-        flash('An error occurred in the "send_message" function: %s' % error)
+        flash(f'An error occurred in the "send_message" function: {error}')
         message = None
     return message
