@@ -3,7 +3,7 @@ import sqlite3
 import click
 from flask import current_app, g
 
-
+# Run $ flask --app rehomr init-db to initialize db
 def init_db():
     db = get_db()
 
